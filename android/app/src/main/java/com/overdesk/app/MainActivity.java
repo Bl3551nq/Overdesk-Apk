@@ -33,7 +33,7 @@ public class MainActivity extends BridgeActivity {
                         @Override
                         public void run() {
                             Intent intent = new Intent(MainActivity.this, FloatingService.class);
-                            stopService(intent);
+                            MainActivity.this.stopService(intent);
                             finish();
                         }
                     });
