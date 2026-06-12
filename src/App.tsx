@@ -19,7 +19,9 @@ import {
   ArrowDown,
   Trash2,
   Pencil,
-  Plus
+  Plus,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Category, AppState } from './types';
 import { DEFAULT_CATEGORIES, ACCENT_PRESETS, CAT_COLORS, BELL_SOUNDS } from './data';
@@ -173,6 +175,17 @@ export default function App() {
     return 'config';
   });
 
+  const [isBorderless, setIsBorderless] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(STORE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.hasOwnProperty('isBorderless')) return parsed.isBorderless;
+      }
+    } catch (e) {}
+    return true; // Transparent, background-free by default
+  });
+
   // Local folder editing states inside full screen configurator dashboard
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
@@ -316,10 +329,10 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
-        categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible, viewMode
+        categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible, viewMode, isBorderless
       }));
     } catch (e) {}
-  }, [categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible, viewMode]);
+  }, [categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible, viewMode, isBorderless]);
 
   // Accent Color implementation in CSS (Presets + Custom)
   useEffect(() => {
@@ -1809,7 +1822,7 @@ export default function App() {
       <div
         id="card"
         ref={cardRef}
-        className={`card-shell cursor-default flex flex-col touch-none select-none ${isLight ? 'light_mode' : ''} ${isMinimized || (isClosed && !isElectron) ? 'hidden' : ''} ${isElectron ? 'relative animate-fade-in' : 'absolute'}`}
+        className={`card-shell cursor-default flex flex-col touch-none select-none ${isLight ? 'light_mode' : ''} ${isBorderless ? 'borderless-mode' : ''} ${isMinimized || (isClosed && !isElectron) ? 'hidden' : ''} ${isElectron ? 'relative animate-fade-in' : 'absolute'}`}
         style={{
           left: isElectron ? undefined : `${posX}px`,
           top: isElectron ? undefined : `${posY}px`,
@@ -1870,6 +1883,23 @@ export default function App() {
               title="Edit habits & steps"
             >
               <SlidersHorizontal size={13} />
+            </button>
+
+            {/* Toggle Glass Card or Borderless Naked View */}
+            <button
+              id="borderless-toggle"
+              className={`flex items-center justify-center w-7 h-7 rounded-full transition-all active:scale-90 ${
+                isBorderless 
+                  ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/20' 
+                  : 'bg-[var(--row-bg)] border border-[var(--divider)] text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--row-hover)]'
+              }`}
+              onClick={() => {
+                playTick(soundOn);
+                setIsBorderless(!isBorderless);
+              }}
+              title={isBorderless ? "Turn ON card backgrounds (Glass card)" : "Turn OFF card backgrounds (Borderless Mode)"}
+            >
+              {isBorderless ? <EyeOff size={13} /> : <Eye size={13} />}
             </button>
           </div>
 

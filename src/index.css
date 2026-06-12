@@ -419,3 +419,57 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--text-dim, rgba(255, 255, 255, 0.35));
 }
+
+/* ══ BORDERLESS floating styling (Transparent & Background-free) ══ */
+.card-shell.borderless-mode {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  padding: 6px 12px !important;
+}
+
+.card-shell.borderless-mode::before {
+  display: none !important;
+}
+
+/* Enhancing high contrast on floating texts */
+.card-shell.borderless-mode .slide-label {
+  text-shadow: 0 1.5px 3.5px rgba(0, 0, 0, 0.95), 0 0 1.5px rgba(0, 0, 0, 0.9) !important;
+  color: #ffffff !important;
+}
+
+.card-shell.borderless-mode .slide-cat-label {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9) !important;
+}
+
+.card-shell.borderless-mode .timer-display {
+  text-shadow: 0 1.5px 3.5px rgba(0, 0, 0, 0.95), 0 0 1px rgba(0, 0, 0, 0.9) !important;
+  color: #ffffff !important;
+}
+
+.card-shell.borderless-mode .progress-label {
+  text-shadow: 0 1px 2.5px rgba(0, 0, 0, 0.95) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Make timer row look integrated & float weightlessly */
+.card-shell.borderless-mode .timer-row {
+  background: rgba(0, 0, 0, 0.42) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  backdrop-filter: blur(8px) saturate(1.8) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(1.8) !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.3) !important;
+}
+
+/* Keep top bar switches and action items clickable & readable on transparent space */
+.card-shell.borderless-mode .top-bar {
+  opacity: 0.35;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.card-shell.borderless-mode:hover .top-bar {
+  opacity: 1;
+}
+
