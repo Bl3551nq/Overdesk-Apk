@@ -39,7 +39,11 @@ jobs:
 
       - name: Add Android Platform
         run: |
-          npx cap add android
+          if [ ! -d "android" ]; then
+            npx cap add android
+          else
+            echo "Android platform directory already exists. Skipping 'add'."
+          fi
 
       - name: Copy Web Assets to Android project
         run: |
