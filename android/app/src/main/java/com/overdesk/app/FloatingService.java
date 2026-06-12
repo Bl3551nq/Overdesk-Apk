@@ -20,17 +20,17 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
-import android.widget.LinearLayout;
 import androidx.core.app.NotificationCompat;
 
 public class FloatingService extends Service {
     private WindowManager windowManager;
     private FrameLayout floatingLayout;
     private WebView webView;
-    private View dragHandle;
+    private WindowManager.LayoutParams params;
 
     private static final String CHANNEL_ID = "FloatingOverdeskChannel";
     private static final int NOTIFICATION_ID = 2024;
+    private static FloatingService instance = null;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -40,6 +40,13 @@ public class FloatingService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        if (instance != null) {
+            try {
+                instance.stopSelf();
+            } catch (Exception e) {}
+        }
+        instance = this;
+
         createNotificationChannel();
         startForegroundServiceCompat();
         initFloatingWindow();
@@ -76,25 +83,9 @@ public class FloatingService extends Service {
         floatingLayout = new FrameLayout(this);
         floatingLayout.setBackgroundColor(Color.TRANSPARENT);
 
-        // Create a horizontal or vertical container to house a subtle Drag Handle & WebView
-        LinearLayout container = new LinearLayout(this);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setBackgroundColor(Color.TRANSPARENT);
-
-        // Native Drag Handle Bar
-        dragHandle = new View(this);
-        int handleHeight = (int) (18 * getResources().getDisplayMetrics().density);
-        LinearLayout.LayoutParams handleParams = new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, handleHeight
-        );
-        dragHandle.setLayoutParams(handleParams);
-        // A sleek, subtle translucent indicator pill of 50% white in a 10% black background
-        dragHandle.setBackgroundColor(Color.parseColor("#1a000000"));
-        container.addView(dragHandle);
-
         // WebView instantiation
         webView = new WebView(this);
-        LinearLayout.LayoutParams webViewParams = new LinearLayout.LayoutParams(
+        FrameLayout.LayoutParams webViewParams = new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         );
@@ -127,13 +118,29 @@ public class FloatingService extends Service {
 
         webView.addJavascriptInterface(new Object() {
             @android.webkit.JavascriptInterface
+            public void dragWindow(final float dx, final float dy) {
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (params != null && windowManager != null && floatingLayout != null) {
+                            params.x += (int) dx;
+                            params.y += (int) dy;
+                            try {
+                                windowManager.updateViewLayout(floatingLayout, params);
+                            } catch (Exception e) {}
+                        }
+                    }
+                });
+            }
+
+            @android.webkit.JavascriptInterface
             public void minimizeApp() {
                 // Done - overlay is already floating freely!
             }
 
             @android.webkit.JavascriptInterface
             public void stopService() {
-                webView.post(new Runnable() {
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
                         stopSelf();
@@ -145,8 +152,7 @@ public class FloatingService extends Service {
         // Load the local packaged index.html under file:/// with the mode=overlay query parameter 
         webView.loadUrl("file:///android_asset/public/index.html?mode=overlay");
 
-        container.addView(webView);
-        floatingLayout.addView(container);
+        floatingLayout.addView(webView);
 
         // Setup WindowManager LayoutParams
         int layoutFlag;
@@ -156,43 +162,24 @@ public class FloatingService extends Service {
             layoutFlag = WindowManager.LayoutParams.TYPE_PHONE;
         }
 
-        final WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-            (int) (350 * getResources().getDisplayMetrics().density), // width
-            (int) (190 * getResources().getDisplayMetrics().density), // height
+        // width: 360dp, height: 220dp to make card completely borderless without cropping/distortion
+        params = new WindowManager.LayoutParams(
+            (int) (360 * getResources().getDisplayMetrics().density), // width
+            (int) (220 * getResources().getDisplayMetrics().density), // height
             layoutFlag,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | 
+            WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | 
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, // Allows free dragging past screen limits
             PixelFormat.TRANSLUCENT
         );
 
-        params.gravity = Gravity.CENTER | Gravity.TOP;
-        params.x = 0;
-        params.y = 100;
-
-        // Implement touch listener on drag handle to let the user reposition the widget smoothly!
-        dragHandle.setOnTouchListener(new View.OnTouchListener() {
-            private int initialX;
-            private int initialY;
-            private float initialTouchX;
-            private float initialTouchY;
-
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        initialX = params.x;
-                        initialY = params.y;
-                        initialTouchX = event.getRawX();
-                        initialTouchY = event.getRawY();
-                        return true;
-                    case MotionEvent.ACTION_MOVE:
-                        params.x = initialX + (int) (event.getRawX() - initialTouchX);
-                        params.y = initialY + (int) (event.getRawY() - initialTouchY);
-                        windowManager.updateViewLayout(floatingLayout, params);
-                        return true;
-                }
-                return false;
-            }
-        });
+        // Map 1:1 on absolute screen pixels
+        params.gravity = Gravity.TOP | Gravity.LEFT;
+        
+        // Center top layout initially
+        int screenWidth = getResources().getDisplayMetrics().widthPixels;
+        params.x = (screenWidth - params.width) / 2;
+        params.y = (int) (80 * getResources().getDisplayMetrics().density);
 
         windowManager.addView(floatingLayout, params);
     }
@@ -205,6 +192,9 @@ public class FloatingService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        if (instance == this) {
+            instance = null;
+        }
         if (floatingLayout != null && windowManager != null) {
             try {
                 windowManager.removeView(floatingLayout);

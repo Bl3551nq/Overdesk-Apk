@@ -795,6 +795,17 @@ export default function App() {
     if ((e.target as HTMLElement).closest('button, input, select, a, .accent-swatch, .cat-color-dot, .nodrag')) {
       return;
     }
+    
+    // Support Android floating overlay dragging
+    if ((window as any).AndroidHost && (window as any).AndroidHost.dragWindow) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setIsDragging(true);
+      (window as any)._lastDragX = e.screenX;
+      (window as any)._lastDragY = e.screenY;
+      warmAudioContext();
+      return;
+    }
+
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
 
@@ -816,6 +827,18 @@ export default function App() {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isDragging) return;
+
+    if ((window as any).AndroidHost && (window as any).AndroidHost.dragWindow) {
+      const dx = e.screenX - ((window as any)._lastDragX || e.screenX);
+      const dy = e.screenY - ((window as any)._lastDragY || e.screenY);
+      (window as any)._lastDragX = e.screenX;
+      (window as any)._lastDragY = e.screenY;
+      if (dx !== 0 || dy !== 0) {
+        (window as any).AndroidHost.dragWindow(dx, dy);
+      }
+      return;
+    }
+
     const clientX = e.clientX;
     const clientY = e.clientY;
 
@@ -848,6 +871,9 @@ export default function App() {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch (err) {}
     setIsDragging(false);
+    if ((window as any).AndroidHost && (window as any).AndroidHost.dragWindow) {
+      return;
+    }
     if (dragFrameRef.current) {
       cancelAnimationFrame(dragFrameRef.current);
       dragFrameRef.current = null;
@@ -863,6 +889,14 @@ export default function App() {
   /* Dragging handlers for mini bullseye icon */
   const handleMiniPointerDown = (e: React.PointerEvent) => {
     e.stopPropagation();
+    if ((window as any).AndroidHost && (window as any).AndroidHost.dragWindow) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setIsDraggingMini(true);
+      (window as any)._lastMiniDragX = e.screenX;
+      (window as any)._lastMiniDragY = e.screenY;
+      warmAudioContext();
+      return;
+    }
     if (isElectron) {
       try {
         if ((window as any).electronAPI?.startWindowDrag) {
@@ -899,6 +933,18 @@ export default function App() {
   const handleMiniPointerMove = (e: React.PointerEvent) => {
     if (isElectron) return;
     if (!isDraggingMini) return;
+
+    if ((window as any).AndroidHost && (window as any).AndroidHost.dragWindow) {
+      const dx = e.screenX - ((window as any)._lastMiniDragX || e.screenX);
+      const dy = e.screenY - ((window as any)._lastMiniDragY || e.screenY);
+      (window as any)._lastMiniDragX = e.screenX;
+      (window as any)._lastMiniDragY = e.screenY;
+      if (dx !== 0 || dy !== 0) {
+        (window as any).AndroidHost.dragWindow(dx, dy);
+      }
+      return;
+    }
+
     const clientX = e.clientX;
     const clientY = e.clientY;
 
@@ -924,6 +970,13 @@ export default function App() {
   };
 
   const handleMiniPointerUp = (e: React.PointerEvent) => {
+    if ((window as any).AndroidHost && (window as any).AndroidHost.dragWindow) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch (err) {}
+      setIsDraggingMini(false);
+      return;
+    }
     if (isElectron) {
       try {
         if ((window as any).electronAPI?.endWindowDrag) {
@@ -1023,6 +1076,9 @@ export default function App() {
 
   const minimizeCard = () => {
     setIsMinimized(true);
+    if ((window as any).AndroidHost && (window as any).AndroidHost.setWindowSize) {
+      (window as any).AndroidHost.setWindowSize(60, 60);
+    }
   };
 
   const toggleEdit = () => {
@@ -1289,14 +1345,14 @@ export default function App() {
 
             {/* LAUNCH OVERLAY WIDGET BUTTON */}
             <button
-              onClick={() => {
-                playTick(soundOn);
-                if ((window as any).AndroidHost && (window as any).AndroidHost.minimizeApp) {
-                  (window as any).AndroidHost.minimizeApp();
-                } else {
-                  setViewMode('overlay');
-                }
-              }}
+               onClick={() => {
+                 playTick(soundOn);
+                 if ((window as any).AndroidHost && (window as any).AndroidHost.startFloatingService) {
+                   (window as any).AndroidHost.startFloatingService();
+                 } else {
+                   setViewMode('overlay');
+                 }
+               }}
               className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-xl text-xs hover:from-violet-500 hover:to-indigo-500 transition-all shadow-md hover:scale-102 flex items-center gap-1.5 active:scale-98"
               title="Shrink app into floating stand-alone overlay widget"
             >
@@ -1801,6 +1857,9 @@ export default function App() {
                   onDoubleClick={(e) => {
                     e.stopPropagation();
                     setIsMinimized(false);
+                    if ((window as any).AndroidHost && (window as any).AndroidHost.setWindowSize) {
+                      (window as any).AndroidHost.setWindowSize(360, 220);
+                    }
                   }}
                   className="flex items-center justify-center select-none cursor-grab active:cursor-grabbing hover:scale-105 active:scale-95 transition-transform duration-150 relative"
                   style={{
@@ -1832,9 +1891,9 @@ export default function App() {
         ref={cardRef}
         className={`card-shell cursor-default flex flex-col touch-none select-none ${isLight ? 'light_mode' : ''} ${isBorderless ? 'borderless-mode' : ''} ${isMinimized || (isClosed && !isElectron) ? 'hidden' : ''} ${isElectron ? 'relative animate-fade-in' : 'absolute'}`}
         style={{
-          left: isElectron ? undefined : `${posX}px`,
-          top: isElectron ? undefined : `${posY}px`,
-          width: isMobile ? `${Math.min(window.innerWidth - 32, cardWidth)}px` : `${cardWidth}px`,
+          left: (isElectron || (window as any).AndroidHost) ? '0px' : `${posX}px`,
+          top: (isElectron || (window as any).AndroidHost) ? '0px' : `${posY}px`,
+          width: (window as any).AndroidHost ? '100%' : (isMobile ? `${Math.min(window.innerWidth - 32, cardWidth)}px` : `${cardWidth}px`),
           maxWidth: '100%',
         }}
         onMouseEnter={activateInteraction}
