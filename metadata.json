@@ -1,0 +1,10 @@
+{
+  "name": "Remix: Overdesk MOBILE LIVE 2",
+  "description": "A pre-market trading checklist and focus timer to keep your routines organized, visible, and focused with audio cues, drag-and-drop customization, and voice commands.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

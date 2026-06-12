@@ -1,0 +1,9 @@
+{
+	"appId": "com.overdesk.app",
+	"appName": "Overdesk",
+	"webDir": "dist",
+	"plugins": {},
+	"android": {
+		"backgroundColor": "#00000000"
+	}
+}

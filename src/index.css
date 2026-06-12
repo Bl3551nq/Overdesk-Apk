@@ -1,0 +1,368 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ══ CORE CARD & VARIABLES ══ */
+.card-shell {
+  --accent: rgba(110,0,210,0.9);
+  --accent-soft: rgba(130,0,255,0.18);
+  --glow: rgba(130,0,255,0.8);
+  --glowfade: rgba(130,0,255,0.22);
+  --ibg: rgba(110,0,210,0.9);
+  --text: #ffffff;
+  --text-dim: rgba(255,255,255,0.32);
+  --text-mid: rgba(255,255,255,0.70);
+  --input-bg: rgba(255,255,255,0.07);
+  --input-border: rgba(255,255,255,0.14);
+  --divider: rgba(255,255,255,0.08);
+  --row-bg: rgba(255,255,255,0.05);
+  --row-hover: rgba(255,255,255,0.10);
+  --task-bg: rgba(255,255,255,0.04);
+  --del-bg: rgba(255,50,50,0.16);
+  --del-fg: rgba(255,110,110,0.9);
+  --card-bg: rgba(4,8,28,0.86);
+  --handle-bg: rgba(5,15,50,0.90);
+  --handle-bar: rgba(255,255,255,0.50);
+  --select-bg: #0d1240;
+  --select-text: #ffffff;
+  
+  width: 320px;
+  border-radius: 28px;
+  padding: 12px 18px 14px;
+  isolation: isolate;
+  background: transparent !important;
+  border-top: 1px solid rgba(255,255,255,0.22);
+  border-right: 1px solid rgba(255,255,255,0.28);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-left: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 
+    0 4px 10px rgba(0, 0, 0, 0.20),
+    0 16px 36px rgba(0, 0, 0, 0.35),
+    0 32px 56px rgba(0, 0, 0, 0.15) !important;
+  transition: background 0.3s ease, border-color 0.3s ease, width 0.1s ease;
+  will-change: left, top;
+  animation: cardIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: scale(0.92) translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Light Theme overrides */
+.card-shell.light_mode {
+  background: #ffffff !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 2px solid #cbd5e1;
+  box-shadow: 
+    inset 0 1.5px 0px rgba(255, 255, 255, 0.95), 
+    inset 0 -1.5px 0px rgba(0, 0, 0, 0.04),
+    0 4px 14px rgba(0, 0, 0, 0.08),
+    0 14px 40px rgba(0, 0, 0, 0.06) !important;
+  --text: #000000;
+  --text-dim: rgba(0, 0, 0, 0.45);
+  --text-mid: rgba(0, 0, 0, 0.72);
+  --input-bg: #f3f4f6;
+  --input-border: rgba(0, 0, 0, 0.12);
+  --divider: rgba(0, 0, 0, 0.08);
+  --row-bg: #f9fafb;
+  --row-hover: #f3f4f6;
+  --task-bg: #f9fafb;
+  --del-bg: rgba(220, 38, 38, 0.08);
+  --del-fg: #dc2626;
+  --card-bg: #ffffff;
+  --handle-bg: #f3f4f6;
+  --handle-bar: rgba(0, 0, 0, 0.35);
+  --select-bg: #ffffff;
+  --select-text: #000000;
+}
+
+/* Glassy highlight edge and blurred drop background */
+.card-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+  pointer-events: none;
+  z-index: -1;
+  clip-path: inset(0 round 28px);
+  -webkit-clip-path: inset(0 round 28px);
+  background: 
+    linear-gradient(135deg,
+      rgba(255,255,255,0.14) 0%,
+      rgba(255,255,255,0.05) 25%,
+      transparent 55%,
+      rgba(255,255,255,0.03) 100%
+    ),
+    linear-gradient(155deg,
+      rgba(0,10,45,0.95)   0%,
+      rgba(2,5,18,0.98)    28%,
+      rgba(1,8,32,0.97)    58%,
+      rgba(0,8,40,0.96)    100%
+    );
+  backdrop-filter: blur(60px) saturate(2.5) brightness(0.70);
+  -webkit-backdrop-filter: blur(60px) saturate(2.5) brightness(0.70);
+}
+
+.card-shell.light_mode::before {
+  display: none;
+}
+
+/* ══ LIQUID PROGRESS BAR ══ */
+.progress-bar-fill-animated {
+  height: 100%;
+  border-radius: 99px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(90deg, #0055ff, #00b4ff, #00e0ff);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-shell.light_mode .progress-bar-fill-animated {
+  background: linear-gradient(90deg, #2b1f54, #442a75, #673ab7, #aa00ff);
+}
+
+/* Liquid sparkle sweep */
+.progress-bar-fill-animated::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.35) 40%, rgba(255,255,255,0.55) 50%, rgba(255,255,255,0.35) 60%, transparent 100%);
+  animation: liquidShimmer 2.2s ease-in-out infinite;
+}
+
+@keyframes liquidShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+
+/* Pulse on leading edge */
+.progress-bar-fill-animated::before {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #7df0ff;
+  animation: blobPulse 1.8s ease-in-out infinite;
+}
+
+.card-shell.light_mode .progress-bar-fill-animated::before {
+  background: #d4bbfd;
+}
+
+@keyframes blobPulse {
+  0%, 100% { transform: translateY(-50%) scale(1); opacity: 1; }
+  50% { transform: translateY(-50%) scale(1.35); opacity: 0.7; }
+}
+
+/* ══ TIMER STATUS PULSE ══ */
+.timer-status-dot {
+  font-size: 8px;
+  color: rgba(80, 220, 120, 0.9);
+  animation: timerPulse 1.4s ease-in-out infinite;
+}
+.timer-status-dot.paused {
+  color: rgba(255, 255, 255, 0.3);
+  animation: none;
+}
+.timer-status-dot.warn {
+  color: rgba(255, 100, 80, 0.9);
+  animation: timerPulse 0.5s ease-in-out infinite;
+}
+
+@keyframes timerPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.9); }
+}
+
+/* ══ MINI FLOATING ICON ══ */
+.mini-icon-shell {
+  position: fixed;
+  z-index: 200;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  transition: opacity 0.25s ease-in-out, transform 0.15s ease-in-out;
+}
+
+.mini-icon-shell:hover {
+  transform: none;
+}
+
+.mini-icon-shell:active {
+  cursor: grabbing;
+  transform: none;
+}
+
+/* ══ TYPEWRITER CURSOR ══ */
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.tw-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  margin-left: 2px;
+  background: currentColor;
+  animation: cursorBlink 0.7s ease-in-out infinite;
+}
+
+/* Custom Scroll bars */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 99px;
+}
+.card-shell.light_mode .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+/* ══ VOICE MIC INDICATOR ══ */
+.voice-indicator-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 99px;
+  padding: 6px 14px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.voice-indicator-container.heard {
+  background: rgba(48, 209, 88, 0.25);
+  border-color: rgba(48, 209, 88, 0.5);
+}
+
+@keyframes voicePulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.65); opacity: 0.45; }
+}
+
+.voice-dot-listening {
+  animation: voicePulse 1.4s ease-in-out infinite;
+}
+
+/* Animations helper */
+.animate-fade-in {
+  animation: fadeIn 0.18s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ══ ELECTRON INTEGRATION STYLING ══ */
+body {
+  background: transparent !important;
+}
+
+/* Make parent containers transparent for native floating effect */
+#root {
+  background: transparent !important;
+}
+
+/* ══ NATIVE ACCELERATED WINDOW DRAGGING FOR ELECTRON ══ */
+.card-shell {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+/* Ensure all form inputs, select options, SVG icons and interactive triggers are clickable */
+.card-shell button,
+.card-shell input,
+.card-shell select,
+.card-shell textarea,
+.card-shell a,
+.card-shell svg,
+.card-shell span,
+.card-shell label,
+.card-shell [role="button"],
+.card-shell .nodrag {
+  -webkit-app-region: no-drag;
+  user-select: auto;
+}
+
+/* Backwards compatibility for top-bar dragging */
+.top-bar {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.top-bar button, 
+.top-bar input, 
+.top-bar select, 
+.top-bar label, 
+.top-bar .theme-switch,
+.top-bar span,
+.top-bar svg,
+.top-bar img {
+  -webkit-app-region: no-drag;
+}
+
+/* Left side resize handle styling */
+.resize-handle {
+  position: absolute;
+  left: 0;
+  top: 24px;
+  bottom: 24px;
+  width: 10px;
+  cursor: ew-resize;
+  z-index: 100;
+  border-radius: 99px;
+  background: transparent;
+  transition: background-color 0.2s ease-in-out;
+  -webkit-app-region: no-drag; /* Stop native dragging on the resize affordance */
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.card-shell.light_mode .resize-handle:hover,
+.card-shell.light_mode .resize-handle:active {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Clear shadow and border for the license page and its wrapper background */
+.license-gate-wrapper,
+.license-gate-card,
+.license-gate-card *,
+.license-gate-wrapper * {
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.license-gate-wrapper {
+  background: transparent !important;
+}

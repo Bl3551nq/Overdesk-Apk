@@ -1,0 +1,101 @@
+name: Build and Release Overdesk Electron App
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions browser UI
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Electron App (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci || npm install
+
+      - name: Build Web Assets and Package Electron App
+        run: npm run electron:pack
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows App Artifacts
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Overdesk-Windows-Builds
+          path: dist-electron/*.exe
+
+      - name: Upload Mac App Artifacts
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Overdesk-Mac-Builds
+          path: dist-electron/*.dmg
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Overdesk-Windows-Builds
+          path: dist-release/windows/
+
+      - name: Download Mac Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: Overdesk-Mac-Builds
+          path: dist-release/mac/
+
+      - name: Create or Update Release and Upload Assets
+        run: |
+          # Safely remove existing release and remote tag using gh CLI
+          gh release delete v1.0.0-build --cleanup-tag --yes || true
+
+          # Create the release notes file on the fly
+          cat << 'EOF' > release-notes.txt
+          Overdesk Floating Assistant - Windows & macOS Releases
+
+          ### 🪟 Windows
+          - **Overdesk Setup 1.0.0.exe**: Standard Windows installer (recommended). It installs the application permanently, adds a Start Menu shortcut, and places a desktop shortcut.
+          - **Overdesk 1.0.0.exe**: Portable single-file version. Run directly without installation.
+
+          ### 🍏 macOS
+          - **Overdesk-1.0.0.dmg**: Standard macOS Disk Image runner. Open the DMG and drag Overdesk to your Applications folder.
+          EOF
+
+          # Collect all built binaries
+          mkdir -p final-binaries
+          cp dist-release/windows/*.exe final-binaries/ || true
+          cp dist-release/mac/*.dmg final-binaries/ || true
+
+          # Create release and upload the packaged executables/DMGs
+          gh release create v1.0.0-build final-binaries/* --title "Overdesk Floating App Release" --notes-file release-notes.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
