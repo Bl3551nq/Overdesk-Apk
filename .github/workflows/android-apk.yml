@@ -61,6 +61,7 @@ jobs:
       - name: Build Android APK with Gradle
         run: |
           cd android
+          sed -i 's/\r$//' gradlew
           chmod +x gradlew
           ./gradlew assembleDebug
 
