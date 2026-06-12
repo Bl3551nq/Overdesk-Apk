@@ -168,13 +168,7 @@ export default function App() {
     if (window.location.search.includes('mode=overlay') || window.location.hash.includes('overlay')) {
       return 'overlay';
     }
-    try {
-      const saved = localStorage.getItem(STORE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed.viewMode) return parsed.viewMode;
-      }
-    } catch (e) {}
+    // Main customization manager always gets the dashboard representation
     return 'config';
   });
 
@@ -1037,6 +1031,10 @@ export default function App() {
 
   const closeApp = () => {
     playCancel(soundOn);
+    if ((window as any).AndroidHost && (window as any).AndroidHost.stopService) {
+      (window as any).AndroidHost.stopService();
+      return;
+    }
     if ((window as any).electronAPI) {
       (window as any).electronAPI.close();
     } else {
@@ -1293,7 +1291,11 @@ export default function App() {
             <button
               onClick={() => {
                 playTick(soundOn);
-                setViewMode('overlay');
+                if ((window as any).AndroidHost && (window as any).AndroidHost.minimizeApp) {
+                  (window as any).AndroidHost.minimizeApp();
+                } else {
+                  setViewMode('overlay');
+                }
               }}
               className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-xl text-xs hover:from-violet-500 hover:to-indigo-500 transition-all shadow-md hover:scale-102 flex items-center gap-1.5 active:scale-98"
               title="Shrink app into floating stand-alone overlay widget"

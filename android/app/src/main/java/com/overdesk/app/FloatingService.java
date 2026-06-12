@@ -125,6 +125,23 @@ public class FloatingService extends Service {
             }
         });
 
+        webView.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public void minimizeApp() {
+                // Done - overlay is already floating freely!
+            }
+
+            @android.webkit.JavascriptInterface
+            public void stopService() {
+                webView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        stopSelf();
+                    }
+                });
+            }
+        }, "AndroidHost");
+
         // Load the local packaged index.html under file:/// with the mode=overlay query parameter 
         webView.loadUrl("file:///android_asset/public/index.html?mode=overlay");
 

@@ -16,6 +16,29 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         try {
             this.bridge.getWebView().setBackgroundColor(Color.TRANSPARENT);
+            this.bridge.getWebView().addJavascriptInterface(new Object() {
+                @android.webkit.JavascriptInterface
+                public void minimizeApp() {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            moveTaskToBack(true);
+                        }
+                    });
+                }
+
+                @android.webkit.JavascriptInterface
+                public void stopService() {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Intent intent = new Intent(MainActivity.this, FloatingService.class);
+                            stopService(intent);
+                            finish();
+                        }
+                    });
+                }
+            }, "AndroidHost");
         } catch (Exception e) {}
 
         checkOverlayPermissionAndStart();
