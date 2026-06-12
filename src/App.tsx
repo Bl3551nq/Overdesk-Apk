@@ -39,6 +39,7 @@ import ColorPickerPopup from './components/ColorPickerPopup';
 import AutoUpdaterPopup from './components/AutoUpdaterPopup';
 import { TypewriterText } from './components/TypewriterText';
 import { OfflineVoiceEngine } from './utils/offlineVoice';
+import { OverdeskLogo } from './components/OverdeskLogo';
 
 const STORE_KEY = 'overdesk_react_v2';
 
@@ -1289,17 +1290,13 @@ export default function App() {
   if (viewMode === 'config') {
     return (
       <div className={`config-dashboard w-screen h-screen overflow-hidden flex flex-col font-sans select-none transition-all duration-300 ${
-        isLight ? 'bg-[#f8fafc] text-slate-900 light_mode' : 'bg-[#05081b] text-white'
+        isLight ? 'bg-[#f8fafc] text-slate-900 light_mode' : 'bg-[#0b0b0f] text-white'
       }`}>
         {/* TOP STATUS HEADER BAR */}
         <header className="flex items-center justify-between px-6 py-4 border-b border-[var(--divider)] backdrop-blur-md bg-opacity-70">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-red-600 rounded-full flex items-center justify-center text-white shadow-md">
-              <svg viewBox="0 0 100 100" className="w-6.5 h-6.5 text-white" stroke="currentColor" fill="none" strokeWidth="6.5">
-                <circle cx="50" cy="50" r="40" />
-                <circle cx="50" cy="50" r="22" strokeWidth="5.5" />
-                <circle cx="50" cy="50" r="7" fill="currentColor" stroke="none" />
-              </svg>
+          <div className="flex items-center gap-4">
+            <div className="w-28 h-28 flex items-center justify-center shrink-0">
+              <OverdeskLogo size={108} />
             </div>
             <div>
               <h1 className="text-base font-bold tracking-tight">Overdesk</h1>
@@ -1361,123 +1358,127 @@ export default function App() {
           </div>
         </header>
 
-        {/* DASHBOARD GRID BODY */}
-        <main className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 min-h-0 bg-transparent">
-          {/* LEFT SECTION: WORKFLOWS & ROUTINES CHEKLISTS */}
-          <section className="lg:col-span-7 flex flex-col min-h-0 bg-black/10 dark:bg-black/20 rounded-2xl border border-[var(--divider)] p-5">
-            <div className="flex justify-between items-center mb-4">
+        {/* DASHBOARD BODY (ONE DYNAMIC SCROLL FEED CONNECTING ALL) */}
+        <main className="flex-1 overflow-y-auto px-6 py-6 space-y-10 bg-transparent custom-scrollbar">
+          {/* SECTION: WORKFLOWS & ROUTINES CHEKLISTS */}
+          <section className="flex flex-col space-y-4">
+            <div className="flex justify-between items-center">
               <h2 className="text-xs font-extrabold uppercase tracking-widest text-[var(--text-mid)]">Workflows & Tasks</h2>
-              <p className="text-[10px] text-[var(--text-dim)] font-medium">Reorder workflows, customize names and slide-steps</p>
             </div>
             
-            <div className="flex-1 overflow-y-auto pr-1 space-y-3.5 min-h-0 custom-scrollbar">
+            <div className="space-y-3.5">
               {categories.map((cat, idx) => {
                 const isExpanded = expandedCat === cat.id;
                 return (
                   <div
                     key={cat.id}
-                    className={`rounded-xl border border-[var(--divider)] transition-all duration-200 bg-[var(--row-bg)] p-4 ${
+                    className={`rounded-xl transition-all duration-200 bg-[var(--row-bg)] p-4 ${
                       cat.active ? 'opacity-100' : 'opacity-55'
                     }`}
                   >
                     {/* Header Row */}
-                    <div className="flex items-center gap-3">
-                      {/* Expand Arrow trigger */}
-                      <button
-                        onClick={() => setExpandedCat(isExpanded ? null : cat.id)}
-                        className="text-[var(--text-dim)] hover:text-[var(--text)] transition-colors p-1 rounded-lg hover:bg-[var(--row-hover)]"
-                      >
-                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                      </button>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex-1 flex items-center gap-3 min-w-0">
+                        {/* Expand Arrow trigger */}
+                        <button
+                          onClick={() => setExpandedCat(isExpanded ? null : cat.id)}
+                          className="text-[var(--text-dim)] hover:text-[var(--text)] transition-colors p-1 rounded-lg hover:bg-[var(--row-hover)] shrink-0"
+                        >
+                          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </button>
 
-                      {/* Accent Color picker trigger */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setColorPickerTarget({ cat, rect });
-                        }}
-                        className="w-4 h-4 rounded-full border border-white/10 transition-transform hover:scale-120 cursor-pointer shadow-sm"
-                        style={{ background: cat.color }}
-                        title="Update checklist color theme"
-                      />
-
-                      {/* Workflow Name (In place editor) */}
-                      {editingCatId === cat.id ? (
-                        <input
-                          type="text"
-                          defaultValue={cat.label}
-                          className="flex-1 bg-[var(--input-bg)] text-xs px-2.5 py-1 rounded-lg border border-violet-500 outline-none text-[var(--text)] font-semibold"
-                          autoFocus
-                          onBlur={(e) => handleEditCategoryName(idx, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleEditCategoryName(idx, e.currentTarget.value);
-                            if (e.key === 'Escape') setEditingCatId(null);
+                        {/* Accent Color picker trigger */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setColorPickerTarget({ cat, rect });
                           }}
+                          className="w-4 h-4 rounded-full border border-white/10 transition-transform hover:scale-120 cursor-pointer shadow-sm shrink-0"
+                          style={{ background: cat.color }}
+                          title="Update checklist color theme"
                         />
-                      ) : (
-                        <div className="flex-1 flex items-center gap-2 min-w-0">
-                          <span
-                            onClick={() => setExpandedCat(isExpanded ? null : cat.id)}
-                            onDoubleClick={() => setEditingCatId(cat.id)}
-                            className="text-xs font-bold tracking-wide text-[var(--text-mid)] hover:text-[var(--text)] truncate cursor-pointer flex-1"
-                          >
-                            {cat.label}
-                          </span>
+
+                        {/* Workflow Name (In place editor) */}
+                        {editingCatId === cat.id ? (
+                          <input
+                            type="text"
+                            defaultValue={cat.label}
+                            className="flex-1 bg-transparent text-xs py-0.5 outline-none border-b-2 border-violet-500 rounded-none text-[var(--text)] font-semibold"
+                            autoFocus
+                            onBlur={(e) => handleEditCategoryName(idx, e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleEditCategoryName(idx, e.currentTarget.value);
+                              if (e.key === 'Escape') setEditingCatId(null);
+                            }}
+                          />
+                        ) : (
+                          <div className="flex-1 flex items-center gap-2 min-w-0">
+                            <span
+                              onClick={() => setExpandedCat(isExpanded ? null : cat.id)}
+                              className="text-xs font-bold tracking-wide text-[var(--text-mid)] hover:text-[var(--text)] cursor-pointer flex-1 py-1"
+                              title="Click to toggle list"
+                            >
+                              {cat.label}
+                            </span>
+                            <button
+                              onClick={() => setEditingCatId(cat.id)}
+                              className="text-[var(--text-mid)] hover:text-violet-400 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-all shrink-0 select-none cursor-pointer flex items-center justify-center border border-white/5"
+                              title="Rename folder"
+                            >
+                              <Pencil size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right metadata and controls wrapper */}
+                      <div className="flex items-center justify-end gap-3 pl-10 sm:pl-0 shrink-0">
+                        {/* Static item count */}
+                        <span className="text-[10px] text-[var(--text-dim)] font-mono font-bold bg-white/5 py-0.5 px-2 rounded-full shrink-0">
+                          {cat.tasks.length} steps
+                        </span>
+
+                        {/* Master Activation Check */}
+                        <button
+                          onClick={() => handleToggleCategory(idx)}
+                          className={`w-6 h-6 rounded-md border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                            cat.active 
+                              ? 'bg-violet-600 border-violet-500 text-white' 
+                              : 'border-[var(--divider)] hover:border-[var(--text-dim)] text-transparent'
+                          }`}
+                          title={cat.active ? 'Disable workflow in routine run' : 'Enable workflow in routine run'}
+                        >
+                          <Check size={12} strokeWidth={4} />
+                        </button>
+
+                        {/* Reordering Controls */}
+                        <div className="flex items-center gap-1.5 border-l border-[var(--divider)] pl-3 shrink-0">
                           <button
-                            onClick={() => setEditingCatId(cat.id)}
-                            className="text-[var(--text-dim)] hover:text-[var(--text)] p-1 opacity-50 hover:opacity-100 transition-opacity"
-                            title="Rename folder"
+                            onClick={() => moveCategory(idx, 'up')}
+                            disabled={idx === 0}
+                            className="text-[var(--text-mid)] hover:text-[var(--text)] disabled:opacity-20 p-2 rounded-lg hover:bg-[var(--row-hover)] border border-white/5 bg-white/5"
+                            title="Move workflow up"
                           >
-                            <Pencil size={11} />
+                            <ArrowUp size={15} />
+                          </button>
+                          <button
+                            onClick={() => moveCategory(idx, 'down')}
+                            disabled={idx === categories.length - 1}
+                            className="text-[var(--text-mid)] hover:text-[var(--text)] disabled:opacity-20 p-2 rounded-lg hover:bg-[var(--row-hover)] border border-white/5 bg-white/5"
+                            title="Move workflow down"
+                          >
+                            <ArrowDown size={15} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(idx)}
+                            disabled={categories.length <= 1}
+                            className="text-red-400 hover:text-red-500 hover:bg-red-500/10 disabled:opacity-20 p-2 rounded-lg hover:bg-[var(--row-hover)] ml-1 border border-red-500/5 bg-red-500/5"
+                            title="Delete Workflow"
+                          >
+                            <Trash2 size={15} />
                           </button>
                         </div>
-                      )}
-
-                      {/* Static item count */}
-                      <span className="text-[10px] text-[var(--text-dim)] font-mono font-bold bg-white/5 py-0.5 px-2 rounded-full">
-                        {cat.tasks.length} steps
-                      </span>
-
-                      {/* Master Activation Check */}
-                      <button
-                        onClick={() => handleToggleCategory(idx)}
-                        className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all cursor-pointer ${
-                          cat.active 
-                            ? 'bg-violet-600 border-violet-500 text-white' 
-                            : 'border-[var(--divider)] hover:border-[var(--text-dim)] text-transparent'
-                        }`}
-                        title={cat.active ? 'Disable workflow in routine run' : 'Enable workflow in routine run'}
-                      >
-                        <Check size={11} strokeWidth={4} />
-                      </button>
-
-                      {/* Reordering Controls */}
-                      <div className="flex items-center gap-0.5 border-l border-[var(--divider)] pl-2">
-                        <button
-                          onClick={() => moveCategory(idx, 'up')}
-                          disabled={idx === 0}
-                          className="text-[var(--text-dim)] hover:text-[var(--text)] disabled:opacity-20 p-1 rounded-md hover:bg-[var(--row-hover)]"
-                          title="Move workflow up"
-                        >
-                          <ArrowUp size={11} />
-                        </button>
-                        <button
-                          onClick={() => moveCategory(idx, 'down')}
-                          disabled={idx === categories.length - 1}
-                          className="text-[var(--text-dim)] hover:text-[var(--text)] disabled:opacity-20 p-1 rounded-md hover:bg-[var(--row-hover)]"
-                          title="Move workflow down"
-                        >
-                          <ArrowDown size={11} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCategory(idx)}
-                          disabled={categories.length <= 1}
-                          className="text-[var(--text-dim)] hover:text-red-500 disabled:opacity-20 p-1 rounded-md hover:bg-[var(--row-hover)] ml-1"
-                          title="Delete Workflow"
-                        >
-                          <Trash2 size={11} />
-                        </button>
                       </div>
                     </div>
 
@@ -1487,13 +1488,13 @@ export default function App() {
                         {cat.tasks.map((task, ti) => (
                           <div
                             key={cat.id + '_task_' + ti}
-                            className="group flex items-center gap-3 p-2 rounded-xl bg-[var(--task-bg)] hover:bg-[var(--row-hover)] border border-[var(--divider)] transition-all select-none"
+                            className="group flex items-center gap-3 p-2 rounded-xl bg-[var(--task-bg)] hover:bg-[var(--row-hover)] transition-all select-none"
                           >
                             {editingTaskId?.catId === cat.id && editingTaskId?.taskIndex === ti ? (
                               <input
                                 type="text"
                                 defaultValue={task}
-                                className="flex-1 bg-[var(--input-bg)] text-xs px-2.5 py-1 rounded-lg border border-violet-500 outline-none text-[var(--text)] font-semibold"
+                                className="flex-1 bg-transparent text-xs py-0.5 outline-none border-b-2 border-violet-500 rounded-none text-[var(--text)] font-semibold"
                                 autoFocus
                                 onBlur={(e) => handleEditTask(cat.id, ti, e.target.value)}
                                 onKeyDown={(e) => {
@@ -1502,28 +1503,27 @@ export default function App() {
                                 }}
                               />
                             ) : (
-                              <div className="flex-1 flex items-center justify-between min-w-0 select-text">
+                              <div className="flex-1 flex items-center justify-between min-w-0 select-text gap-3">
                                 <span
-                                  onDoubleClick={() => setEditingTaskId({ catId: cat.id, taskIndex: ti })}
-                                  className="text-xs text-[var(--text-mid)] font-medium truncate cursor-pointer hover:text-[var(--text)]"
+                                  className="text-xs text-[var(--text-mid)] font-medium truncate flex-1 py-1"
                                 >
                                   {ti + 1}. {task}
                                 </span>
-                                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity select-none">
+                                <div className="flex gap-1.5 opacity-100 transition-opacity select-none shrink-0 items-center">
                                   <button
                                     onClick={() => setEditingTaskId({ catId: cat.id, taskIndex: ti })}
-                                    className="text-[var(--text-dim)] hover:text-[var(--text)]"
+                                    className="text-[var(--text-mid)] hover:text-violet-400 p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 transition-all shrink-0 cursor-pointer"
                                     title="Edit step detail"
                                   >
-                                    <Pencil size={11} />
+                                    <Pencil size={15} />
                                   </button>
                                   <button
                                     onClick={() => handleDeleteTask(cat.id, ti)}
                                     disabled={cat.tasks.length <= 1}
-                                    className="text-[var(--text-dim)] hover:text-red-500 disabled:opacity-20"
+                                    className="text-red-400 hover:text-red-500 bg-red-500/5 hover:bg-red-500/10 border border-red-500/5 disabled:opacity-20 p-2 rounded-lg shrink-0 cursor-pointer transition-all"
                                     title="Delete step"
                                   >
-                                    <Trash2 size={11} />
+                                    <Trash2 size={15} />
                                   </button>
                                 </div>
                               </div>
@@ -1567,39 +1567,39 @@ export default function App() {
               />
               <button
                 onClick={handleAddCategory}
-                className="px-4.5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition-transform active:scale-95 flex items-center gap-1.5 shadow-sm"
+                className="px-4.5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition-transform active:scale-95 flex items-center gap-1.5 shadow-sm shrink-0"
               >
                 <Plus size={14} /> Add Folder
               </button>
             </div>
           </section>
 
-          {/* RIGHT SECTION: CONFIGURATIONS, COLORS & AUDIO METRICS */}
-          <section className="lg:col-span-5 flex flex-col min-h-0 bg-black/10 dark:bg-black/20 rounded-2xl border border-[var(--divider)] p-5">
-            <div className="mb-4">
+          <hr className="border-[var(--divider)]" />
+
+          {/* SECTION: CONFIGURATIONS, COLORS & AUDIO METRICS */}
+          <section className="flex flex-col space-y-4">
+            <div>
               <h2 className="text-xs font-extrabold uppercase tracking-widest text-[var(--text-mid)]">Dashboard Customization</h2>
-              <p className="text-[10px] text-[var(--text-dim)] font-medium">Fine tune your signals, clocks, accents and timers</p>
             </div>
 
-            <div className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0 custom-scrollbar select-none">
+            <div className="space-y-4 select-none">
               {/* ACCENT OUTLINE COLOR PRESETS SELECTOR */}
-              <div className="p-4 rounded-xl border border-[var(--divider)] bg-[var(--row-bg)] space-y-3">
+              <div className="p-4 rounded-xl bg-[var(--row-bg)] space-y-3">
                 <div className="flex justify-between items-center text-xs">
                   <span className="font-extrabold text-[var(--text)] uppercase tracking-wider text-[11px]">Accent Template Color</span>
-                  <span className="text-[10px] text-[var(--text-dim)]">Sets widget borderglow and dot accents</span>
                 </div>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                <div className="flex flex-wrap gap-2.5 pt-1">
                   {ACCENT_PRESETS.map((col, idx) => (
                     <button
                       key={col.hex || idx}
                       onClick={() => applyAccent(idx)}
-                      className="w-full h-8 rounded-lg border border-white/15 relative transition-transform hover:scale-105 flex items-center justify-center cursor-pointer overflow-hidden shadow-sm active:scale-95"
+                      className="w-6.5 h-6.5 rounded-full border border-white/10 relative transition-all hover:scale-115 flex items-center justify-center cursor-pointer shadow-sm active:scale-90 shrink-0"
                       style={{ background: col.rgba }}
                       title={`Preset Color ${idx + 1}`}
                     >
                       {accentIdx === idx && (
-                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center text-white">
-                          <Check size={12} strokeWidth={4} />
+                        <div className="absolute inset-0 flex items-center justify-center text-white">
+                          <Check size={11} strokeWidth={4} />
                         </div>
                       )}
                     </button>
@@ -1608,14 +1608,13 @@ export default function App() {
               </div>
 
               {/* TIMERS Y BELL CLOCK PREFERENCES */}
-              <div className="p-4 rounded-xl border border-[var(--divider)] bg-[var(--row-bg)] space-y-4">
+              <div className="p-4 rounded-xl bg-[var(--row-bg)] space-y-4">
                 <span className="text-[11px] font-extrabold text-[var(--text)] uppercase tracking-wider block">Timers & Chime audio signals</span>
                 
                 {/* Display Countdown Toggle */}
                 <div className="flex items-center justify-between text-xs py-1">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[var(--text-mid)] font-semibold">Enable task countdown timer</span>
-                    <span className="text-[9.5px] text-[var(--text-dim)] leading-snug">Let you measure and control focus duration per check routine list</span>
                   </div>
                   <button
                     onClick={() => setTimerVisible(!timerVisible)}
@@ -1633,9 +1632,8 @@ export default function App() {
                 <div className="flex items-center justify-between text-xs py-1 border-t border-[var(--divider)] pt-3.5">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[var(--text-mid)] font-semibold">Habit completion tone</span>
-                    <span className="text-[9.5px] text-[var(--text-dim)]">Triggered at 00:00:00 completion</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 font-mono">
                     <select
                       className="bg-[var(--select-bg)] border border-[var(--input-border)] rounded-lg text-xs text-[var(--select-text)] px-3 py-1.5 outline-none cursor-pointer hover:border-[var(--text-dim)] transition-all font-semibold"
                       value={selectedBell}
@@ -1661,7 +1659,6 @@ export default function App() {
                 <div className="flex items-center justify-between text-xs py-1 border-t border-[var(--divider)] pt-3.5">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[var(--text-mid)] font-semibold">Routine ticking feedback audio</span>
-                    <span className="text-[9.5px] text-[var(--text-dim)]">Play dynamic click chimes when habits advance</span>
                   </div>
                   <button
                     onClick={() => setSoundOn(!soundOn)}
@@ -1677,11 +1674,10 @@ export default function App() {
               </div>
 
               {/* LOCAL VOICE RECOGNITION COMMAND PANEL */}
-              <div className="p-4 rounded-xl border border-[var(--divider)] bg-[var(--row-bg)] space-y-3 select-text">
+              <div className="p-4 rounded-xl bg-[var(--row-bg)] space-y-3 select-text">
                 <div className="flex justify-between items-center text-xs select-none">
                   <div className="flex flex-col gap-0.5">
                     <span className="text-[11px] font-extrabold text-[var(--text)] uppercase tracking-wider block font-sans">Hands-free voice matching</span>
-                    <span className="text-[9.5px] text-[var(--text-dim)]">Vocal micro signal recognition</span>
                   </div>
                   <button
                     onClick={() => setVoiceOn(!voiceOn)}
@@ -1695,7 +1691,7 @@ export default function App() {
                   </button>
                 </div>
 
-                {voiceOn ? (
+                {voiceOn && (
                   <div className="p-3.5 rounded-xl border border-violet-500/20 bg-violet-600/5 text-xs space-y-2 leading-relaxed">
                     <div className="flex items-center gap-1.5 font-bold text-violet-400 select-none">
                       <Mic size={14} className="animate-pulse" />
@@ -1712,22 +1708,17 @@ export default function App() {
                     )}
                     {isIframe && (
                       <p className="text-[9.5px] text-[var(--text-dim)] pt-1.5 leading-snug border-t border-[var(--divider)] select-none">
-                        Note: If voice match fails inside this preview iframe, click "Open in New Tab" in the top-right corner to grant mic access.
+                        Note: For mic access in the iframe preview, click "Open in New Tab".
                       </p>
                     )}
                   </div>
-                ) : (
-                  <p className="p-3 bg-black/10 text-xs text-[var(--text-dim)] font-medium rounded-xl leading-normal select-none">
-                    Turn voice commands on to guide your routine playbooks entirely hands-free. Signal recognition is parsed fully locally offline on-device.
-                  </p>
                 )}
               </div>
 
               {/* TYPEWRITER TICK TEXT */}
-              <div className="flex items-center justify-between text-xs p-4 rounded-xl border border-[var(--divider)] bg-[var(--row-bg)] select-none">
+              <div className="flex items-center justify-between text-xs p-4 rounded-xl bg-[var(--row-bg)] select-none">
                 <div className="flex flex-col gap-0.5">
                   <span className="font-extrabold uppercase text-[11px] tracking-wider text-[var(--text)] block">Typewriter animation</span>
-                  <span className="text-[9.5px] text-[var(--text-dim)] leading-snug">Renders slides character-by-character with blinkers</span>
                 </div>
                 <button
                   onClick={() => setIdleAnim(!idleAnim)}
@@ -1745,7 +1736,6 @@ export default function App() {
               <div className="p-4 rounded-xl border border-red-500/15 bg-red-500/5 flex items-center justify-between text-xs">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-red-500 font-bold uppercase tracking-wider text-[11px]">Factory App Reset</span>
-                  <span className="text-[10px] text-[var(--text-dim)]">Wipes all custom routine steps and files irrevocably</span>
                 </div>
                 <button
                   onClick={handleResetClick}
@@ -1761,10 +1751,11 @@ export default function App() {
             </div>
 
             {/* Centered credits information */}
-            <div className="text-center text-[10px] font-bold text-[var(--text-dim)] hover:text-[var(--text-mid)] pt-4 cursor-pointer select-none" onClick={openAbout}>
+            <div className="text-center text-[10px] font-bold text-[var(--text-dim)] hover:text-[var(--text-mid)] pt-6 pb-2 cursor-pointer select-none" onClick={openAbout}>
               Overdesk v2.0 • Pro Routines Client
             </div>
           </section>
+
         </main>
 
         {/* Embedded modals and overlays */}
