@@ -107,6 +107,10 @@ public class FloatingService extends Service {
         settings.setDatabaseEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            settings.setAllowFileAccessFromFileURLs(true);
+            settings.setAllowUniversalAccessFromFileURLs(true);
+        }
 
         // Support mixing content (https/http) if necessary
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -121,8 +125,8 @@ public class FloatingService extends Service {
             }
         });
 
-        // Load correct shared preview URL which has the new beautiful borderless styling already implemented!
-        webView.loadUrl("https://ais-pre-m3wj7x3qzggmtjy65lpnus-579262669550.europe-west2.run.app");
+        // Load the local packaged index.html under file:/// with the mode=overlay query parameter 
+        webView.loadUrl("file:///android_asset/public/index.html?mode=overlay");
 
         container.addView(webView);
         floatingLayout.addView(container);

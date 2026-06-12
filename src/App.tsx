@@ -165,6 +165,9 @@ export default function App() {
 
   // Layout mode: 'config' (full screen dashboard) or 'overlay' (compact widget overlay)
   const [viewMode, setViewMode] = useState<'config' | 'overlay'>(() => {
+    if (window.location.search.includes('mode=overlay') || window.location.hash.includes('overlay')) {
+      return 'overlay';
+    }
     try {
       const saved = localStorage.getItem(STORE_KEY);
       if (saved) {
@@ -176,6 +179,9 @@ export default function App() {
   });
 
   const [isBorderless, setIsBorderless] = useState<boolean>(() => {
+    if (window.location.search.includes('mode=overlay') || window.location.hash.includes('overlay')) {
+      return true;
+    }
     try {
       const saved = localStorage.getItem(STORE_KEY);
       if (saved) {
