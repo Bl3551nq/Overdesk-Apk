@@ -24,7 +24,9 @@ jobs:
         run: npm ci
 
       - name: Build Web Production Assets
-        run: npm run build
+        run: |
+          node generate-icons.cjs
+          npm run build
 
       - name: Install Capacitor v6 Core & CLI
         run: |
@@ -61,6 +63,9 @@ jobs:
       - name: Build Android APK with Gradle
         run: |
           cd android
+          # Clean and download uncorrupted gradle-wrapper.jar to bypass git bin CRLF/LF issues
+          mkdir -p gradle/wrapper
+          curl -sSLo gradle/wrapper/gradle-wrapper.jar https://raw.githubusercontent.com/gradle/gradle/v8.2.1/gradle/wrapper/gradle-wrapper.jar
           sed -i 's/\r$//' gradlew
           chmod +x gradlew
           ./gradlew assembleDebug
