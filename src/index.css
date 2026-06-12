@@ -83,6 +83,39 @@
   --select-text: #000000;
 }
 
+/* Configurator full screen dashboard theme variables */
+.config-dashboard {
+  --text: #ffffff;
+  --text-dim: rgba(255, 255, 255, 0.35);
+  --text-mid: rgba(255, 255, 255, 0.72);
+  --input-bg: rgba(255, 255, 255, 0.04);
+  --input-border: rgba(255, 255, 255, 0.10);
+  --divider: rgba(255, 255, 255, 0.08);
+  --row-bg: rgba(255, 255, 255, 0.03);
+  --row-hover: rgba(255, 255, 255, 0.06);
+  --task-bg: rgba(255, 255, 255, 0.02);
+  --del-bg: rgba(239, 68, 68, 0.10);
+  --del-fg: #f87171;
+  --select-bg: #090e29;
+  --select-text: #ffffff;
+}
+
+.config-dashboard.light_mode {
+  --text: #0f172a;
+  --text-dim: rgba(15, 23, 42, 0.45);
+  --text-mid: rgba(15, 23, 42, 0.75);
+  --input-bg: #f8fafc;
+  --input-border: rgba(15, 23, 42, 0.12);
+  --divider: rgba(15, 23, 42, 0.08);
+  --row-bg: #f1f5f9;
+  --row-hover: #e2e8f0;
+  --task-bg: #f8fafc;
+  --del-bg: rgba(239, 68, 68, 0.08);
+  --del-fg: #ef4444;
+  --select-bg: #ffffff;
+  --select-text: #0f172a;
+}
+
 /* Glassy highlight edge and blurred drop background */
 .card-shell::before {
   content: '';
@@ -366,4 +399,23 @@ body {
 
 .license-gate-wrapper {
   background: transparent !important;
+}
+
+/* Custom Scrollbar Styles for the Configurator Dashboard */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--divider, rgba(255, 255, 255, 0.12));
+  border-radius: 99px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim, rgba(255, 255, 255, 0.35));
 }

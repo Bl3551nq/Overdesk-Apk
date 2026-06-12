@@ -5,6 +5,7 @@ import {
   Moon, 
   ChevronLeft, 
   ChevronRight, 
+  ChevronDown, 
   Check, 
   RotateCcw, 
   Play, 
@@ -13,10 +14,15 @@ import {
   FolderLock,
   X,
   Mic,
-  Minus
+  Minus,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  Pencil,
+  Plus
 } from 'lucide-react';
 import { Category, AppState } from './types';
-import { DEFAULT_CATEGORIES, ACCENT_PRESETS } from './data';
+import { DEFAULT_CATEGORIES, ACCENT_PRESETS, CAT_COLORS, BELL_SOUNDS } from './data';
 import { 
   warmAudioContext, 
   playTick, 
@@ -155,6 +161,26 @@ export default function App() {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
+  // Layout mode: 'config' (full screen dashboard) or 'overlay' (compact widget overlay)
+  const [viewMode, setViewMode] = useState<'config' | 'overlay'>(() => {
+    try {
+      const saved = localStorage.getItem(STORE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.viewMode) return parsed.viewMode;
+      }
+    } catch (e) {}
+    return 'config';
+  });
+
+  // Local folder editing states inside full screen configurator dashboard
+  const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingTaskId, setEditingTaskId] = useState<{ catId: string; taskIndex: number } | null>(null);
+  const [newCatName, setNewCatName] = useState('');
+  const [newTaskNames, setNewTaskNames] = useState<Record<string, string>>({});
+  const [isResetConfirm, setIsResetConfirm] = useState(false);
+
   // Floating Mini-Icon Drag
   const [miniX, setMiniX] = useState(() => Math.round(window.innerWidth - 68));
   const [miniY, setMiniY] = useState(() => Math.round(window.innerHeight - 108));
@@ -290,10 +316,10 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({
-        categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible
+        categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible, viewMode
       }));
     } catch (e) {}
-  }, [categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible]);
+  }, [categories, step, isDone, isLight, idleAnim, soundOn, voiceOn, accentIdx, selectedBell, timerTarget, timerVisible, viewMode]);
 
   // Accent Color implementation in CSS (Presets + Custom)
   useEffect(() => {
@@ -564,7 +590,11 @@ export default function App() {
         recognitionRef.current = null;
       }
       if (offlineVoiceRef.current) {
-        offlineVoiceRef.current.stop();
+        offlineVoiceRef.current.onCommand = () => {};
+        offlineVoiceRef.current.onState = () => {};
+        try {
+          offlineVoiceRef.current.stop();
+        } catch (err) {}
         offlineVoiceRef.current = null;
       }
     };
@@ -983,7 +1013,7 @@ export default function App() {
   };
 
   const toggleEdit = () => {
-    setIsEditOpen((prev) => !prev);
+    setViewMode('config');
   };
 
   const closeApp = () => {
@@ -1055,6 +1085,109 @@ export default function App() {
     playBellOnce(key, true);
   };
 
+  // Reordering helpers
+  const moveCategory = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= categories.length) return;
+    const newCats = [...categories];
+    const temp = newCats[index];
+    newCats[index] = newCats[targetIndex];
+    newCats[targetIndex] = temp;
+    setCategories(newCats);
+  };
+
+  const handleToggleCategory = (index: number) => {
+    const activeCats = categories.filter((c) => c.active);
+    if (categories[index].active && activeCats.length === 1) {
+      return; // Must have at least one active category
+    }
+    const newCats = [...categories];
+    newCats[index].active = !newCats[index].active;
+    setCategories(newCats);
+  };
+
+  const handleEditCategoryName = (index: number, val: string) => {
+    const newCats = [...categories];
+    newCats[index].label = val.trim() || newCats[index].label;
+    setCategories(newCats);
+    setEditingCatId(null);
+  };
+
+  const handleAddCategory = () => {
+    const name = newCatName.trim();
+    if (!name) return;
+    const newCatColor = CAT_COLORS[categories.length % CAT_COLORS.length];
+    const newCat: Category = {
+      id: 'cat_' + Math.random().toString(36).substring(2, 9),
+      label: name,
+      color: newCatColor,
+      active: true,
+      tasks: ['New trade checklist item'],
+    };
+    setCategories([...categories, newCat]);
+    setNewCatName('');
+    setExpandedCat(newCat.id);
+  };
+
+  const handleAddTask = (catId: string) => {
+    const tName = (newTaskNames[catId] || '').trim();
+    if (!tName) return;
+    const newCats = categories.map((c) => {
+      if (c.id === catId) {
+        return { ...c, tasks: [...c.tasks, tName] };
+      }
+      return c;
+    });
+    setCategories(newCats);
+    setNewTaskNames((prev) => ({ ...prev, [catId]: '' }));
+  };
+
+  const handleEditTask = (catId: string, taskIndex: number, val: string) => {
+    const newCats = categories.map((c) => {
+      if (c.id === catId) {
+        const nextTasks = [...c.tasks];
+        nextTasks[taskIndex] = val.trim() || nextTasks[taskIndex];
+        return { ...c, tasks: nextTasks };
+      }
+      return c;
+    });
+    setCategories(newCats);
+    setEditingTaskId(null);
+  };
+
+  const handleDeleteTask = (catId: string, taskIndex: number) => {
+    const currentCat = categories.find((c) => c.id === catId);
+    if (!currentCat || currentCat.tasks.length <= 1) return; // keep at least one task
+    const newCats = categories.map((c) => {
+      if (c.id === catId) {
+        const nextTasks = [...c.tasks];
+        nextTasks.splice(taskIndex, 1);
+        return { ...c, tasks: nextTasks };
+      }
+      return c;
+    });
+    setCategories(newCats);
+  };
+
+  const handleDeleteCategory = (index: number) => {
+    if (categories.length <= 1) return;
+    if (categories[index].active && categories.filter((c) => c.active).length === 1) return;
+    const newCats = [...categories];
+    newCats.splice(index, 1);
+    setCategories(newCats);
+    setExpandedCat(null);
+  };
+
+  const handleResetClick = () => {
+    if (!isResetConfirm) {
+      setIsResetConfirm(true);
+      setTimeout(() => setIsResetConfirm(false), 3000);
+    } else {
+      resetApp();
+      setIsResetConfirm(false);
+    }
+  };
+
   const resetApp = () => {
     setCategories(DEFAULT_CATEGORIES.map((c) => ({ ...c, tasks: [...c.tasks] })));
     setIsLight(false);
@@ -1071,6 +1204,7 @@ export default function App() {
     setTimerVisible(true);
     setStep(0);
     setIsDone(false);
+    setViewMode('config');
   };
 
   const openAbout = () => {
@@ -1078,6 +1212,532 @@ export default function App() {
   };
 
   const activeItem = queue[isDone ? -1 : step];
+
+  if (viewMode === 'config') {
+    return (
+      <div className={`config-dashboard w-screen h-screen overflow-hidden flex flex-col font-sans select-none transition-all duration-300 ${
+        isLight ? 'bg-[#f8fafc] text-slate-900 light_mode' : 'bg-[#05081b] text-white'
+      }`}>
+        {/* TOP STATUS HEADER BAR */}
+        <header className="flex items-center justify-between px-6 py-4 border-b border-[var(--divider)] backdrop-blur-md bg-opacity-70">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-red-600 rounded-full flex items-center justify-center text-white shadow-md">
+              <svg viewBox="0 0 100 100" className="w-6.5 h-6.5 text-white" stroke="currentColor" fill="none" strokeWidth="6.5">
+                <circle cx="50" cy="50" r="40" />
+                <circle cx="50" cy="50" r="22" strokeWidth="5.5" />
+                <circle cx="50" cy="50" r="7" fill="currentColor" stroke="none" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-base font-bold tracking-tight">Overdesk</h1>
+              <p className="text-[9px] text-[var(--text-dim)] uppercase tracking-wider font-extrabold">Professional Routine & Habit Dashboard</p>
+            </div>
+          </div>
+
+          {/* Routine Status Statistics Overview */}
+          <div className="hidden md:flex items-center gap-7 text-xs">
+            <div className="flex flex-col">
+              <span className="text-[var(--text-dim)] font-bold uppercase tracking-wider text-[8.5px]">Total Loaded Routine Steps</span>
+              <span className="font-bold text-sm text-violet-500 font-mono">{queue.length} steps active</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[var(--text-dim)] font-bold uppercase tracking-wider text-[8.5px]">Sequence Folders</span>
+              <span className="font-semibold text-sm text-[var(--text-mid)]">{categories.length} playbooks</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[var(--text-dim)] font-bold uppercase tracking-wider text-[8.5px]">Assembly Mic Voice controls</span>
+              <span className={`font-semibold text-sm ${voiceOn ? 'text-emerald-500' : 'text-[var(--text-dim)]'}`}>{voiceOn ? 'Active 🎙️' : 'Muted'}</span>
+            </div>
+          </div>
+
+          {/* Quick Header toggles */}
+          <div className="flex items-center gap-3">
+            {/* Minimalist Theme Swappper */}
+            <button
+              className="theme-switch flex items-center w-11 h-6 rounded-full p-0.5 border border-[var(--divider)] relative transition-colors duration-200"
+              onClick={toggleTheme}
+              title="Toggle theme mode"
+            >
+              <div
+                className="theme-knob w-4.5 h-4.5 bg-white rounded-full flex items-center justify-center transition-transform duration-200 shadow-sm"
+                style={{ transform: isLight ? 'translateX(18px)' : 'translateX(0)' }}
+              >
+                {isLight ? (
+                  <Moon size={10} className="text-slate-800" />
+                ) : (
+                  <Sun size={10} className="text-amber-500 animate-pulse" />
+                )}
+              </div>
+            </button>
+
+            {/* LAUNCH OVERLAY WIDGET BUTTON */}
+            <button
+              onClick={() => {
+                playTick(soundOn);
+                setViewMode('overlay');
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-xl text-xs hover:from-violet-500 hover:to-indigo-500 transition-all shadow-md hover:scale-102 flex items-center gap-1.5 active:scale-98"
+              title="Shrink app into floating stand-alone overlay widget"
+            >
+              Overlay Mode
+            </button>
+          </div>
+        </header>
+
+        {/* DASHBOARD GRID BODY */}
+        <main className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 min-h-0 bg-transparent">
+          {/* LEFT SECTION: WORKFLOWS & ROUTINES CHEKLISTS */}
+          <section className="lg:col-span-7 flex flex-col min-h-0 bg-black/10 dark:bg-black/20 rounded-2xl border border-[var(--divider)] p-5">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xs font-extrabold uppercase tracking-widest text-[var(--text-mid)]">Workflows & Tasks</h2>
+              <p className="text-[10px] text-[var(--text-dim)] font-medium">Reorder workflows, customize names and slide-steps</p>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3.5 min-h-0 custom-scrollbar">
+              {categories.map((cat, idx) => {
+                const isExpanded = expandedCat === cat.id;
+                return (
+                  <div
+                    key={cat.id}
+                    className={`rounded-xl border border-[var(--divider)] transition-all duration-200 bg-[var(--row-bg)] p-4 ${
+                      cat.active ? 'opacity-100' : 'opacity-55'
+                    }`}
+                  >
+                    {/* Header Row */}
+                    <div className="flex items-center gap-3">
+                      {/* Expand Arrow trigger */}
+                      <button
+                        onClick={() => setExpandedCat(isExpanded ? null : cat.id)}
+                        className="text-[var(--text-dim)] hover:text-[var(--text)] transition-colors p-1 rounded-lg hover:bg-[var(--row-hover)]"
+                      >
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                      </button>
+
+                      {/* Accent Color picker trigger */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setColorPickerTarget({ cat, rect });
+                        }}
+                        className="w-4 h-4 rounded-full border border-white/10 transition-transform hover:scale-120 cursor-pointer shadow-sm"
+                        style={{ background: cat.color }}
+                        title="Update checklist color theme"
+                      />
+
+                      {/* Workflow Name (In place editor) */}
+                      {editingCatId === cat.id ? (
+                        <input
+                          type="text"
+                          defaultValue={cat.label}
+                          className="flex-1 bg-[var(--input-bg)] text-xs px-2.5 py-1 rounded-lg border border-violet-500 outline-none text-[var(--text)] font-semibold"
+                          autoFocus
+                          onBlur={(e) => handleEditCategoryName(idx, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleEditCategoryName(idx, e.currentTarget.value);
+                            if (e.key === 'Escape') setEditingCatId(null);
+                          }}
+                        />
+                      ) : (
+                        <div className="flex-1 flex items-center gap-2 min-w-0">
+                          <span
+                            onClick={() => setExpandedCat(isExpanded ? null : cat.id)}
+                            onDoubleClick={() => setEditingCatId(cat.id)}
+                            className="text-xs font-bold tracking-wide text-[var(--text-mid)] hover:text-[var(--text)] truncate cursor-pointer flex-1"
+                          >
+                            {cat.label}
+                          </span>
+                          <button
+                            onClick={() => setEditingCatId(cat.id)}
+                            className="text-[var(--text-dim)] hover:text-[var(--text)] p-1 opacity-50 hover:opacity-100 transition-opacity"
+                            title="Rename folder"
+                          >
+                            <Pencil size={11} />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Static item count */}
+                      <span className="text-[10px] text-[var(--text-dim)] font-mono font-bold bg-white/5 py-0.5 px-2 rounded-full">
+                        {cat.tasks.length} steps
+                      </span>
+
+                      {/* Master Activation Check */}
+                      <button
+                        onClick={() => handleToggleCategory(idx)}
+                        className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all cursor-pointer ${
+                          cat.active 
+                            ? 'bg-violet-600 border-violet-500 text-white' 
+                            : 'border-[var(--divider)] hover:border-[var(--text-dim)] text-transparent'
+                        }`}
+                        title={cat.active ? 'Disable workflow in routine run' : 'Enable workflow in routine run'}
+                      >
+                        <Check size={11} strokeWidth={4} />
+                      </button>
+
+                      {/* Reordering Controls */}
+                      <div className="flex items-center gap-0.5 border-l border-[var(--divider)] pl-2">
+                        <button
+                          onClick={() => moveCategory(idx, 'up')}
+                          disabled={idx === 0}
+                          className="text-[var(--text-dim)] hover:text-[var(--text)] disabled:opacity-20 p-1 rounded-md hover:bg-[var(--row-hover)]"
+                          title="Move workflow up"
+                        >
+                          <ArrowUp size={11} />
+                        </button>
+                        <button
+                          onClick={() => moveCategory(idx, 'down')}
+                          disabled={idx === categories.length - 1}
+                          className="text-[var(--text-dim)] hover:text-[var(--text)] disabled:opacity-20 p-1 rounded-md hover:bg-[var(--row-hover)]"
+                          title="Move workflow down"
+                        >
+                          <ArrowDown size={11} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCategory(idx)}
+                          disabled={categories.length <= 1}
+                          className="text-[var(--text-dim)] hover:text-red-500 disabled:opacity-20 p-1 rounded-md hover:bg-[var(--row-hover)] ml-1"
+                          title="Delete Workflow"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Workflows Sub-steps lists (Only displays when Expanded) */}
+                    {isExpanded && (
+                      <div className="mt-4 pl-6 pr-1 pt-4 border-t border-[var(--divider)] space-y-2 select-text">
+                        {cat.tasks.map((task, ti) => (
+                          <div
+                            key={cat.id + '_task_' + ti}
+                            className="group flex items-center gap-3 p-2 rounded-xl bg-[var(--task-bg)] hover:bg-[var(--row-hover)] border border-[var(--divider)] transition-all select-none"
+                          >
+                            {editingTaskId?.catId === cat.id && editingTaskId?.taskIndex === ti ? (
+                              <input
+                                type="text"
+                                defaultValue={task}
+                                className="flex-1 bg-[var(--input-bg)] text-xs px-2.5 py-1 rounded-lg border border-violet-500 outline-none text-[var(--text)] font-semibold"
+                                autoFocus
+                                onBlur={(e) => handleEditTask(cat.id, ti, e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleEditTask(cat.id, ti, e.currentTarget.value);
+                                  if (e.key === 'Escape') setEditingTaskId(null);
+                                }}
+                              />
+                            ) : (
+                              <div className="flex-1 flex items-center justify-between min-w-0 select-text">
+                                <span
+                                  onDoubleClick={() => setEditingTaskId({ catId: cat.id, taskIndex: ti })}
+                                  className="text-xs text-[var(--text-mid)] font-medium truncate cursor-pointer hover:text-[var(--text)]"
+                                >
+                                  {ti + 1}. {task}
+                                </span>
+                                <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity select-none">
+                                  <button
+                                    onClick={() => setEditingTaskId({ catId: cat.id, taskIndex: ti })}
+                                    className="text-[var(--text-dim)] hover:text-[var(--text)]"
+                                    title="Edit step detail"
+                                  >
+                                    <Pencil size={11} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTask(cat.id, ti)}
+                                    disabled={cat.tasks.length <= 1}
+                                    className="text-[var(--text-dim)] hover:text-red-500 disabled:opacity-20"
+                                    title="Delete step"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Slide-Step inline registration form */}
+                        <div className="flex gap-2.5 mt-2.5">
+                          <input
+                            type="text"
+                            className="flex-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text)] px-3.5 py-1.5 outline-none focus:border-violet-500"
+                            placeholder="Type routine step and press Enter…"
+                            value={newTaskNames[cat.id] || ''}
+                            onChange={(e) => setNewTaskNames({ ...newTaskNames, [cat.id]: e.target.value })}
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(cat.id); }}
+                          />
+                          <button
+                            onClick={() => handleAddTask(cat.id)}
+                            className="px-4 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold transition-all flex items-center gap-1 active:scale-95"
+                          >
+                            <Plus size={13} /> Add Step
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bottom Form to Register a brand new Workflow */}
+            <div className="flex gap-2.5 mt-4 pt-4 border-t border-[var(--divider)]">
+              <input
+                type="text"
+                className="flex-1 bg-[var(--input-bg)] border border-[var(--input-border)] rounded-xl text-xs text-[var(--text)] px-4 py-2.5 outline-none focus:border-violet-500/50 fill-none"
+                placeholder="Register new Habit sequence checklist (e.g. Trading Routine, Focus Blocks)..."
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddCategory(); }}
+              />
+              <button
+                onClick={handleAddCategory}
+                className="px-4.5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-bold transition-transform active:scale-95 flex items-center gap-1.5 shadow-sm"
+              >
+                <Plus size={14} /> Add Folder
+              </button>
+            </div>
+          </section>
+
+          {/* RIGHT SECTION: CONFIGURATIONS, COLORS & AUDIO METRICS */}
+          <section className="lg:col-span-5 flex flex-col min-h-0 bg-black/10 dark:bg-black/20 rounded-2xl border border-[var(--divider)] p-5">
+            <div className="mb-4">
+              <h2 className="text-xs font-extrabold uppercase tracking-widest text-[var(--text-mid)]">Dashboard Customization</h2>
+              <p className="text-[10px] text-[var(--text-dim)] font-medium">Fine tune your signals, clocks, accents and timers</p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 min-h-0 custom-scrollbar select-none">
+              {/* ACCENT OUTLINE COLOR PRESETS SELECTOR */}
+              <div className="p-4 rounded-xl border border-[var(--divider)] bg-[var(--row-bg)] space-y-3">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-extrabold text-[var(--text)] uppercase tracking-wider text-[11px]">Accent Template Color</span>
+                  <span className="text-[10px] text-[var(--text-dim)]">Sets widget borderglow and dot accents</span>
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {ACCENT_PRESETS.map((col, idx) => (
+                    <button
+                      key={col.hex || idx}
+                      onClick={() => applyAccent(idx)}
+                      className="w-full h-8 rounded-lg border border-white/15 relative transition-transform hover:scale-105 flex items-center justify-center cursor-pointer overflow-hidden shadow-sm active:scale-95"
+                      style={{ background: col.rgba }}
+                      title={`Preset Color ${idx + 1}`}
+                    >
+                      {accentIdx === idx && (
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center text-white">
+                          <Check size={12} strokeWidth={4} />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* TIMERS Y BELL CLOCK PREFERENCES */}
+              <div className="p-4 rounded-xl border border-[var(--divider)] bg-[var(--row-bg)] space-y-4">
+                <span className="text-[11px] font-extrabold text-[var(--text)] uppercase tracking-wider block">Timers & Chime audio signals</span>
+                
+                {/* Display Countdown Toggle */}
+                <div className="flex items-center justify-between text-xs py-1">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[var(--text-mid)] font-semibold">Enable task countdown timer</span>
+                    <span className="text-[9.5px] text-[var(--text-dim)] leading-snug">Let you measure and control focus duration per check routine list</span>
+                  </div>
+                  <button
+                    onClick={() => setTimerVisible(!timerVisible)}
+                    className="w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 border border-[var(--divider)] relative"
+                    style={{ backgroundColor: timerVisible ? 'var(--accent)' : 'color-mix(in srgb, var(--divider) 80%, black)' }}
+                  >
+                    <div
+                      className="w-4.5 h-4.5 bg-white rounded-full transition-transform duration-200"
+                      style={{ transform: timerVisible ? 'translateX(16px)' : 'translateX(0)' }}
+                    />
+                  </button>
+                </div>
+
+                {/* Alarm selector */}
+                <div className="flex items-center justify-between text-xs py-1 border-t border-[var(--divider)] pt-3.5">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[var(--text-mid)] font-semibold">Habit completion tone</span>
+                    <span className="text-[9.5px] text-[var(--text-dim)]">Triggered at 00:00:00 completion</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      className="bg-[var(--select-bg)] border border-[var(--input-border)] rounded-lg text-xs text-[var(--select-text)] px-3 py-1.5 outline-none cursor-pointer hover:border-[var(--text-dim)] transition-all font-semibold"
+                      value={selectedBell}
+                      onChange={(e) => onBellSelect(e.target.value)}
+                    >
+                      {BELL_SOUNDS.map((sound) => (
+                        <option key={sound.key} value={sound.key}>
+                          {sound.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => playPreviewBell(selectedBell)}
+                      className="w-8 h-8 bg-black/15 hover:bg-black/35 border border-[var(--divider)] rounded-lg text-[var(--text)] flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+                      title="Test alarm volume"
+                    >
+                      <Play size={10} fill="currentColor" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* General notification checkbox feedback */}
+                <div className="flex items-center justify-between text-xs py-1 border-t border-[var(--divider)] pt-3.5">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[var(--text-mid)] font-semibold">Routine ticking feedback audio</span>
+                    <span className="text-[9.5px] text-[var(--text-dim)]">Play dynamic click chimes when habits advance</span>
+                  </div>
+                  <button
+                    onClick={() => setSoundOn(!soundOn)}
+                    className="w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 border border-[var(--divider)] relative"
+                    style={{ backgroundColor: soundOn ? 'var(--accent)' : 'color-mix(in srgb, var(--divider) 80%, black)' }}
+                  >
+                    <div
+                      className="w-4.5 h-4.5 bg-white rounded-full transition-transform duration-200"
+                      style={{ transform: soundOn ? 'translateX(16px)' : 'translateX(0)' }}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              {/* LOCAL VOICE RECOGNITION COMMAND PANEL */}
+              <div className="p-4 rounded-xl border border-[var(--divider)] bg-[var(--row-bg)] space-y-3 select-text">
+                <div className="flex justify-between items-center text-xs select-none">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[11px] font-extrabold text-[var(--text)] uppercase tracking-wider block font-sans">Hands-free voice matching</span>
+                    <span className="text-[9.5px] text-[var(--text-dim)]">Vocal micro signal recognition</span>
+                  </div>
+                  <button
+                    onClick={() => setVoiceOn(!voiceOn)}
+                    className="w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 border border-[var(--divider)] relative"
+                    style={{ backgroundColor: voiceOn ? 'var(--accent)' : 'color-mix(in srgb, var(--divider) 80%, black)' }}
+                  >
+                    <div
+                      className="w-4.5 h-4.5 bg-white rounded-full transition-transform duration-200"
+                      style={{ transform: voiceOn ? 'translateX(16px)' : 'translateX(0)' }}
+                    />
+                  </button>
+                </div>
+
+                {voiceOn ? (
+                  <div className="p-3.5 rounded-xl border border-violet-500/20 bg-violet-600/5 text-xs space-y-2 leading-relaxed">
+                    <div className="flex items-center gap-1.5 font-bold text-violet-400 select-none">
+                      <Mic size={14} className="animate-pulse" />
+                      <span>Vocal Trigger Lexicon:</span>
+                    </div>
+                    <ul className="list-disc list-inside space-y-1 pl-1.5 text-xs text-[var(--text-mid)] font-semibold select-text">
+                      <li>Speak <code className="bg-black/30 dark:bg-black/50 px-1.5 py-0.5 rounded text-amber-300 border border-white/5 font-mono">"Next"</code> to advance to the next step list.</li>
+                      <li>Speak <code className="bg-black/30 dark:bg-black/50 px-1.5 py-0.5 rounded text-amber-300 border border-white/5 font-mono">"Back"</code> to return to previous steps.</li>
+                    </ul>
+                    {voiceError && (
+                      <div className="text-[10px] p-2 rounded-lg bg-black/20 border border-[var(--divider)] mt-2 font-medium flex items-center justify-between text-yellow-500 select-none">
+                        <span>🎙️ {voiceError}</span>
+                      </div>
+                    )}
+                    {isIframe && (
+                      <p className="text-[9.5px] text-[var(--text-dim)] pt-1.5 leading-snug border-t border-[var(--divider)] select-none">
+                        Note: If voice match fails inside this preview iframe, click "Open in New Tab" in the top-right corner to grant mic access.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="p-3 bg-black/10 text-xs text-[var(--text-dim)] font-medium rounded-xl leading-normal select-none">
+                    Turn voice commands on to guide your routine playbooks entirely hands-free. Signal recognition is parsed fully locally offline on-device.
+                  </p>
+                )}
+              </div>
+
+              {/* TYPEWRITER TICK TEXT */}
+              <div className="flex items-center justify-between text-xs p-4 rounded-xl border border-[var(--divider)] bg-[var(--row-bg)] select-none">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-extrabold uppercase text-[11px] tracking-wider text-[var(--text)] block">Typewriter animation</span>
+                  <span className="text-[9.5px] text-[var(--text-dim)] leading-snug">Renders slides character-by-character with blinkers</span>
+                </div>
+                <button
+                  onClick={() => setIdleAnim(!idleAnim)}
+                  className="w-10 h-5.5 rounded-full p-0.5 transition-colors duration-200 border border-[var(--divider)] relative"
+                  style={{ backgroundColor: idleAnim ? 'var(--accent)' : 'color-mix(in srgb, var(--divider) 80%, black)' }}
+                >
+                  <div
+                    className="w-4.5 h-4.5 bg-white rounded-full transition-transform duration-200"
+                    style={{ transform: idleAnim ? 'translateX(16px)' : 'translateX(0)' }}
+                  />
+                </button>
+              </div>
+
+              {/* RESTOR APP SETTINGS FACTORY DANGER ZONE */}
+              <div className="p-4 rounded-xl border border-red-500/15 bg-red-500/5 flex items-center justify-between text-xs">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-red-500 font-bold uppercase tracking-wider text-[11px]">Factory App Reset</span>
+                  <span className="text-[10px] text-[var(--text-dim)]">Wipes all custom routine steps and files irrevocably</span>
+                </div>
+                <button
+                  onClick={handleResetClick}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer ${
+                    isResetConfirm 
+                      ? 'bg-red-500 text-white animate-bounce' 
+                      : 'bg-red-500/10 border border-red-500/25 hover:bg-red-500/20 text-red-500'
+                  }`}
+                >
+                  {isResetConfirm ? 'Really Reset?' : 'Reset All Settings'}
+                </button>
+              </div>
+            </div>
+
+            {/* Centered credits information */}
+            <div className="text-center text-[10px] font-bold text-[var(--text-dim)] hover:text-[var(--text-mid)] pt-4 cursor-pointer select-none" onClick={openAbout}>
+              Overdesk v2.0 • Pro Routines Client
+            </div>
+          </section>
+        </main>
+
+        {/* Embedded modals and overlays */}
+        <ColorPickerPopup
+          isOpen={!!colorPickerTarget}
+          activeColor={colorPickerTarget?.cat.color || ''}
+          triggerRect={colorPickerTarget?.rect || null}
+          isLight={isLight}
+          onSelect={(newCol) => {
+            if (!colorPickerTarget) return;
+            const next = categories.map((c) => {
+              if (c.id === colorPickerTarget.cat.id) {
+                return { ...c, color: newCol };
+              }
+              return c;
+            });
+            setCategories(next);
+          }}
+          onClose={() => setColorPickerTarget(null)}
+        />
+
+        <AboutOverlay
+          isOpen={isAboutOpen}
+          onClose={() => setIsAboutOpen(false)}
+          isLight={isLight}
+          updaterMessage={updaterMessage}
+          updaterReady={updaterReady}
+          isElectron={isElectron}
+          onRestartToUpdate={() => {
+            if (isElectron && (window as any).electronAPI?.restartToUpdate) {
+              (window as any).electronAPI.restartToUpdate();
+            }
+          }}
+        />
+
+        {isElectron && (
+          <AutoUpdaterPopup
+            message={updaterMessage}
+            isReady={updaterReady}
+            isLight={isLight}
+            onRestartToUpdate={() => {
+              if (isElectron && (window as any).electronAPI?.restartToUpdate) {
+                (window as any).electronAPI.restartToUpdate();
+              }
+            }}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-screen h-screen overflow-hidden font-sans select-none bg-transparent flex items-center justify-center">
