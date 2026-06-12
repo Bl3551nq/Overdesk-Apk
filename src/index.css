@@ -35,14 +35,15 @@
   padding: 12px 18px 14px;
   isolation: isolate;
   background: transparent !important;
-  border-top: 1px solid rgba(255,255,255,0.22);
-  border-right: 1px solid rgba(255,255,255,0.28);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  border-left: 1px solid rgba(255,255,255,0.05);
+  border-top: 1px solid rgba(255,255,255,0.32);
+  border-right: 1px solid rgba(255,255,255,0.26);
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+  border-left: 1px solid rgba(255,255,255,0.18);
   box-shadow: 
-    0 4px 10px rgba(0, 0, 0, 0.20),
-    0 16px 36px rgba(0, 0, 0, 0.35),
-    0 32px 56px rgba(0, 0, 0, 0.15) !important;
+    0 8px 32px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 1px 1.5px var(--accent-soft),
+    0 0 35px var(--glowfade) !important;
   transition: background 0.3s ease, border-color 0.3s ease, width 0.1s ease;
   will-change: left, top;
   animation: cardIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;

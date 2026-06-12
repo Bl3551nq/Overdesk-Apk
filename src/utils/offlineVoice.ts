@@ -28,6 +28,10 @@ export class OfflineVoiceEngine {
   async start() {
     if (this.isRunning) return;
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Microphone API (getUserMedia) is not supported in this browser/device context.");
+      }
+
       this.stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
           echoCancellation: true,
@@ -37,7 +41,15 @@ export class OfflineVoiceEngine {
       });
 
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        throw new Error("AudioContext is not supported in this browser/device environment.");
+      }
+
       this.audioContext = new AudioContextClass();
+      if (!this.stream) {
+        throw new Error("Failed to capture microphone stream.");
+      }
+
       const source = this.audioContext.createMediaStreamSource(this.stream);
       
       this.analyser = this.audioContext.createAnalyser();
@@ -52,67 +64,73 @@ export class OfflineVoiceEngine {
 
       this.onState("Offline Assembly active 🎙️");
       this.tick();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Offline speech microphone init failed:", err);
-      this.onState("Microphone access denied.");
+      this.onState(err?.message || "Microphone access denied.");
+      this.stop();
       throw err;
     }
   }
 
   private tick = () => {
-    if (!this.isRunning || !this.analyser) return;
+    try {
+      if (!this.isRunning || !this.analyser) return;
 
-    const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
-    this.analyser.getByteFrequencyData(dataArray);
+      const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+      this.analyser.getByteFrequencyData(dataArray);
 
-    // Compute spectral sums for low, mid, high bands
-    // Index 0-6: low frequencies (0 - 1000Hz) -> vowels, bass resonance
-    // Index 7-23: mid frequencies (1000 - 4000Hz) -> vocal formants
-    // Index 24-127: high frequencies (4000 - 22000Hz) -> sibilants ("s", "x")
-    let lowSum = 0;
-    let midSum = 0;
-    let highSum = 0;
+      // Compute spectral sums for low, mid, high bands
+      // Index 0-6: low frequencies (0 - 1000Hz) -> vowels, bass resonance
+      // Index 7-23: mid frequencies (1000 - 4000Hz) -> vocal formants
+      // Index 24-127: high frequencies (4000 - 22000Hz) -> sibilants ("s", "x")
+      let lowSum = 0;
+      let midSum = 0;
+      let highSum = 0;
 
-    for (let i = 0; i < dataArray.length; i++) {
-      const val = dataArray[i];
-      if (i <= 6) lowSum += val;
-      else if (i <= 23) midSum += val;
-      else highSum += val;
-    }
-
-    const totalSum = lowSum + midSum + highSum;
-    const avgSum = totalSum / dataArray.length;
-
-    // Speech Activity Detection Gate
-    if (avgSum > this.silenceThreshold) {
-      if (!this.speechDetected) {
-        this.speechDetected = true;
-        this.speechBuffer = [];
-        this.silenceCounter = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        const val = dataArray[i];
+        if (i <= 6) lowSum += val;
+        else if (i <= 23) midSum += val;
+        else highSum += val;
       }
-      
-      if (this.speechBuffer.length < this.maxSpeechFrames) {
-        this.speechBuffer.push({
-          low: lowSum,
-          mid: midSum,
-          high: highSum,
-          rms: avgSum
-        });
-      }
-    } else {
-      if (this.speechDetected) {
-        this.silenceCounter++;
-        // If silence persists for ~180ms, process word footprint
-        if (this.silenceCounter >= 6) {
-          this.processSpeechFootprint();
-          this.speechDetected = false;
+
+      const totalSum = lowSum + midSum + highSum;
+      const avgSum = totalSum / dataArray.length;
+
+      // Speech Activity Detection Gate
+      if (avgSum > this.silenceThreshold) {
+        if (!this.speechDetected) {
+          this.speechDetected = true;
           this.speechBuffer = [];
+          this.silenceCounter = 0;
+        }
+        
+        if (this.speechBuffer.length < this.maxSpeechFrames) {
+          this.speechBuffer.push({
+            low: lowSum,
+            mid: midSum,
+            high: highSum,
+            rms: avgSum
+          });
+        }
+      } else {
+        if (this.speechDetected) {
+          this.silenceCounter++;
+          // If silence persists for ~180ms, process word footprint
+          if (this.silenceCounter >= 6) {
+            this.processSpeechFootprint();
+            this.speechDetected = false;
+            this.speechBuffer = [];
+          }
         }
       }
-    }
 
-    if (this.isRunning) {
-      this.animationFrameId = requestAnimationFrame(this.tick);
+      if (this.isRunning) {
+        this.animationFrameId = requestAnimationFrame(this.tick);
+      }
+    } catch (err) {
+      console.error("Error inside offline speech tick process loop:", err);
+      this.stop();
     }
   };
 
